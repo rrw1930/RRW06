@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>能源智能诊断APP</title>
-    <!-- 引入ECharts和Ant Design CSS -->
+    <!-- 引入ECharts和PDF生成库 -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
-    <link href="https://cdn.bootcdn.net/ajax/libs/antd/4.24.8/antd.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.5/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.5/vfs_fonts.min.js"></script>
     <style>
         :root {
             --primary-color: #1890ff;
@@ -71,19 +72,30 @@
             background: #fff1f0;
             margin: 16px 0;
         }
+
+        .report-btn {
+            background: #52c41a;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .loading-dot {
+            display: inline-block;
+            animation: dotFlashing 1s infinite linear;
+        }
+        @keyframes dotFlashing {
+            0% { opacity: 0.3 }
+            50% { opacity: 1 }
+            100% { opacity: 0.3 }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- 头部导航 -->
-        <div class="card" style="margin-bottom: 24px;">
-            <h1 style="color: var(--primary-color); margin: 0;">
-                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo4MjRGRTg0QzA3NjgxMUUzQkZGNDhENEJFQjM2OTcyRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDo4MjRGRTg0RDA3NjgxMUUzQkZGNDhENEJFQjM2OTcyRiI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOjgyNEZFODRBMDc2ODExRTNCRkY0OEQ0QkVCMzY5NzJGIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjgyNEZFODRCMDc2ODExRTNCRkY0OEQ0QkVCMzY5NzJGIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+Y7ZvUAAAAm5JREFUeNpi/P//PwMlgAWdwQjE6UC8E4gvA/F5IN4CxL5AzIwuwQzEBkC8FYj/AfE/FPwfiA8DsS26Bicgfg8lhA6uAbE6isB6LELo+BEQc0EFvmKRYAJiE6jAeywSokD8EyrxCYsEHxA/gQp8xCIhB8RfoQKvsEjIowh8wCIhiyLwHosEigv+Y5FQQBH4i0WCB0XgHxYJdhSB/1gkmFAEGLBI/MYQ+I8i8B1F4DOKwHsUgddA/BAq8QiI70EF7gHxFSi/DhDvBOJ1QLwQiKcD8TQgngDEMUDsD8SuQGwBxHpArAjE/EDMAcQs6B5F8SgDAxYwGYi5oQxJIN4BxF+g7H9A/AyI5wMxD7rqF0A8DYi/QQX+A/FlIA7C5lR0MAWIH0M1/wPiRUDMik0hOpgNxD+gmjcCMQc+hShgARD/hGq+BsRC+BSig3Ag/gPV/BCIJfApRAc6QPwbqvkZEEvjU4gOjIH4D1TzOyCWx6cQHdgB8T+o5h9AbIBPITrwBeL/UM1/gdgSn0J0kADVDAH/gdgFn0J0MAGqGQKm4VOIDhZANUPAMnwK0cFOqGYI2INPITq4gKL5Pz6F6OAdiuZ/+BSig79Qzf/wKUQHjFDNTPgUogMmqGZWfArRATNUMwc+hegAEGAA0JCwB6d/xr0AAAAASUVORK5CYII=" 
-                     style="height: 32px; vertical-align: middle;">
-                能源卫士
-            </h1>
-        </div>
-
         <!-- 数据上传模块 -->
         <div class="card">
             <h2>数据上传中心</h2>
@@ -106,15 +118,15 @@
 
         <!-- 智能问答模块 -->
         <div class="card">
-            <h2>能源顾问</h2>
+            <h2>能源顾问（DeepSeek版）</h2>
             <div class="chat-container" id="chatBox">
                 <div class="message-bubble bot-message">
-                    您好！我是能源顾问AI，请问有什么可以帮您？
+                    您好！我是DeepSeek能源顾问，请问有什么可以帮您？
                 </div>
             </div>
             <div style="margin-top: 16px; display: flex;">
                 <input type="text" id="questionInput" 
-                       placeholder="输入您的问题，例如：昨日峰值用电时段" 
+                       placeholder="输入您的问题，例如：如何降低能耗成本" 
                        style="flex: 1; padding: 12px; border: 1px solid #e8e8e8; border-radius: 4px 0 0 4px;">
                 <button onclick="handleQuestion()" 
                         style="background: var(--primary-color); color: white; border: none; padding: 0 24px; border-radius: 0 4px 4px 0; cursor: pointer;">
@@ -131,14 +143,17 @@
                 <p>• 夜间待机能耗超标：5.4kW（行业基准≤3kW）</p>
                 <p>• 峰谷比异常：3.2倍（建议值≤2.5倍）</p>
             </div>
-            <button onclick="generateReport()" 
-                    style="background: #52c41a; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer;">
-                生成完整诊断报告
+            <button class="report-btn" onclick="generatePDFReport()">
+                生成PDF诊断报告
             </button>
         </div>
     </div>
 
     <script>
+        // DeepSeek API配置（需替换为真实API密钥）
+        const DEEPSEEK_API_KEY = 'your_api_key_here';
+        const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
+
         // 初始化ECharts图表
         const chart = echarts.init(document.getElementById('mainChart'));
         const option = {
@@ -159,56 +174,130 @@
         };
         chart.setOption(option);
 
-        // 智能问答功能
-        const QA_MAP = {
-            "峰值": "昨日用电峰值出现在14:00-15:00，负荷达到580kWh",
-            "建议": "建议实施以下节能措施：1. 优化空调运行时段 2. 更换LED照明 3. 安装智能电表",
-            "异常": "检测到3号生产线夜间待机能耗异常，建议安排设备巡检"
-        };
-
-        function handleQuestion() {
+        // 智能问答功能（DeepSeek版）
+        async function handleQuestion() {
             const input = document.getElementById('questionInput');
             const chatBox = document.getElementById('chatBox');
-            
+            const question = input.value.trim();
+            if (!question) return;
+
             // 用户消息
             const userMsg = document.createElement('div');
             userMsg.className = 'message-bubble user-message';
-            userMsg.textContent = input.value;
+            userMsg.textContent = question;
             chatBox.appendChild(userMsg);
 
-            // AI回复
-            const aiMsg = document.createElement('div');
-            aiMsg.className = 'message-bubble bot-message';
-            aiMsg.textContent = QA_MAP[Object.keys(QA_MAP).find(key => input.value.includes(key))] 
-                               || "暂未找到相关信息，请尝试询问：用电峰值、节能建议、异常检测";
-            chatBox.appendChild(aiMsg);
+            // 添加加载状态
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = 'message-bubble bot-message';
+            loadingMsg.innerHTML = '思考中<span class="loading-dot">.</span><span class="loading-dot">.</span><span class="loading-dot">.</span>';
+            chatBox.appendChild(loadingMsg);
+            chatBox.scrollTop = chatBox.scrollHeight;
 
-            // 清空输入
+            try {
+                // 调用DeepSeek API
+                const response = await fetch(DEEPSEEK_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [{
+                            role: "user",
+                            content: `你是一个能源管理专家，请用中文回答：${question}`
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const answer = data.choices[0].message.content;
+
+                // 移除加载状态
+                chatBox.removeChild(loadingMsg);
+
+                // AI回复
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'message-bubble bot-message';
+                aiMsg.textContent = answer;
+                chatBox.appendChild(aiMsg);
+            } catch (error) {
+                console.error('API调用失败:', error);
+                loadingMsg.innerHTML = '服务暂时不可用，请稍后再试';
+            }
+
             input.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // 报告生成功能
-        function generateReport() {
-            const blob = new Blob([`《能源诊断报告》
-            
-1. 总体能耗分析
-   - 昨日总用电量: 8452kWh
-   - 单位产值能耗: 0.85kWh/元（行业基准0.78）
+        // PDF报告生成功能（修复版）
+        function generatePDFReport() {
+            // 定义中文字体（使用内置字体）
+            pdfMake.fonts = {
+                Roboto: {
+                    normal: 'Roboto-Regular.ttf',
+                    bold: 'Roboto-Medium.ttf',
+                    italics: 'Roboto-Italic.ttf',
+                    bolditalics: 'Roboto-MediumItalic.ttf'
+                }
+            };
 
-2. 能效异常点
-   • 产线3待机能耗超标（5.4kW）
-   • 空压机运行效率低于标准值15%
+            const docDefinition = {
+                content: [
+                    { 
+                        text: '能源智能诊断报告', 
+                        style: 'header',
+                        alignment: 'center',
+                        margin: [0, 20]
+                    },
+                    {
+                        text: '客户名称：ABC制造有限公司',
+                        style: 'subheader',
+                        margin: [0, 10]
+                    },
+                    {
+                        text: '报告日期：' + new Date().toLocaleDateString(),
+                        style: 'subheader'
+                    },
+                    {
+                        text: ' ',
+                        margin: [0, 20]
+                    },
+                    {
+                        ul: [
+                            { text: '1. 能耗概况', style: 'sectionTitle' },
+                            '• 本月总能耗：12,345 kWh',
+                            '• 单位产值能耗：0.85 kWh/元（行业基准0.78）',
+                            { text: '2. 异常检测', style: 'sectionTitle' },
+                            '• 产线3待机能耗超标（5.4kW）',
+                            '• 空压机运行效率低于标准值15%',
+                            { text: '3. 优化建议', style: 'sectionTitle' },
+                            '• 实施设备智能化启停控制',
+                            '• 开展员工节能意识培训',
+                            '• 申请政府节能改造补贴'
+                        ]
+                    }
+                ],
+                styles: {
+                    header: {
+                        fontSize: 22,
+                        bold: true,
+                        color: '#1890ff'
+                    },
+                    subheader: {
+                        fontSize: 12,
+                        color: '#666'
+                    },
+                    sectionTitle: {
+                        fontSize: 14,
+                        bold: true,
+                        margin: [0, 10]
+                    }
+                }
+            };
 
-3. 优化建议
-   • 实施设备智能化启停控制
-   • 开展员工节能意识培训
-   • 申请政府节能改造补贴`], {type: 'text/plain'});
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = '能源诊断报告.txt';
-            link.click();
+            pdfMake.createPdf(docDefinition).download('能源诊断报告.pdf');
         }
 
         // 文件上传模拟
